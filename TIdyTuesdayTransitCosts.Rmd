@@ -1,0 +1,111 @@
+---
+title: "Tidy Tuesday Transit Costs"
+author: "Jeff Grayum"
+date: "1/6/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading libraries.
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(ggthemes)
+library(scales)
+library(skimr)
+#install.packages("countrycode")
+library(countrycode)
+library(glue)
+```
+
+Loading datasets.
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2021-01-05')
+
+transit_cost <- tuesdata$transit_cost %>%
+  mutate_at(vars(start_year, end_year, real_cost), as.numeric) %>%
+  mutate(country_code = ifelse(country == "UK", "GB", country),
+    country = countrycode(country_code, "iso2c",
+                          "country.name"),
+    tunnel_per = tunnel / length) 
+```
+
+Exploring the data
+```{r}
+transit_cost %>%
+  view()
+
+skimr::skim(transit_cost)
+
+transit_cost %>%
+  group_by(start_year) %>%
+  summarize(mean_cost = mean(cost_km_millions),
+            mean_length = mean(length)) %>%
+  ggplot(aes(start_year, mean_cost, size = mean_length)) +
+  geom_point()
+```
+
+
+```{r}
+transit_cost %>%
+  count(country, sort = TRUE) 
+
+transit_cost %>%
+  count(city, country, sort = TRUE)
+
+transit_cost %>%
+  filter(country == "United States") %>%
+  mutate(line = fct_reorder(line, year)) %>%
+  ggplot(aes(xmin = start_year, xmax = end_year, y = line, 
+             color = city, size = real_cost)) +
+  geom_errorbarh(height = 0.2) +
+  labs(x = "Year",
+       y = "",
+       title = "Transit projects in the United States",
+       color = "City",
+       size = "Cost") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman"))
+
+transit_cost %>%
+  ggplot(aes(cost_km_millions)) +
+  geom_histogram() +
+  scale_x_continuous(labels = dollar) +
+  labs(x = "Cost / KM (Millions of USD)",
+       y = "",
+       title = "Transit projects cost per kilometer (millions of USD") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman"))
+
+transit_cost %>%
+  filter(country != "NA") %>%
+  filter(!is.na(cost_km_millions),
+         tunnel_per == 1) %>%
+  mutate(country = fct_lump(country, 12)) %>%
+  add_count(country) %>%
+  mutate(country = glue("{ country } ( {n} )"), 
+         country = fct_reorder(country, cost_km_millions)) %>%
+  ggplot(aes(cost_km_millions, country, fill = factor(rr))) +
+  geom_boxplot() +
+  scale_x_continuous(labels = dollar) +
+  labs(x = "Cost / KM (Millions of USD)",
+       y = "",
+       title = "Transit projects cost per kilometer (millions of USD",
+       fill = "Subway/RR") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman"))
+
+
+  
+  
+        
+```
+
