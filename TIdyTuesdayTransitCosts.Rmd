@@ -32,7 +32,8 @@ transit_cost <- tuesdata$transit_cost %>%
   mutate(country_code = ifelse(country == "UK", "GB", country),
     country = countrycode(country_code, "iso2c",
                           "country.name"),
-    tunnel_per = tunnel / length) 
+    tunnel_per = tunnel / length) %>%
+  mutate(rr = ifelse(rr, "Railroad", "Not railroad"))
 ```
 
 Exploring the data
@@ -92,20 +93,100 @@ transit_cost %>%
   add_count(country) %>%
   mutate(country = glue("{ country } ( {n} )"), 
          country = fct_reorder(country, cost_km_millions)) %>%
-  ggplot(aes(cost_km_millions, country, fill = factor(rr))) +
+  ggplot(aes(cost_km_millions, country, fill = rr)) +
   geom_boxplot() +
   scale_x_continuous(labels = dollar) +
   labs(x = "Cost / KM (Millions of USD)",
        y = "",
        title = "Transit projects cost per kilometer (millions of USD",
-       fill = "Subway/RR") +
+       fill = "") +
   theme_fivethirtyeight() +
   theme(axis.title = element_text(),
         text = element_text(family = "Times New Roman"))
 
+```
 
+
+We have a lot of data on China, so let's start looking there!
+```{r}
+transit_cost %>%
+  filter(country == "China",
+         !is.na(cost_km_millions),
+         tunnel_per == 1) %>%
+  mutate(city = fct_lump(city, 12)) %>%
+  add_count(city) %>%
+  mutate(city = glue("{ city } ( {n} )"), 
+         city = fct_reorder(city, cost_km_millions)) %>%
+  ggplot(aes(cost_km_millions, city, fill = rr)) +
+  geom_boxplot() +
+  scale_x_continuous(labels = dollar) +
+  expand_limits(x = 0) +
+  labs(x = "Cost / KM (Millions of USD)",
+       y = "",
+       title = "Transit projects cost per kilometer (millions of USD) in Chinese cities",
+       fill = "") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman"))
+
+transit_cost %>%
+  filter(country == "China",
+         !is.na(cost_km_millions),
+         tunnel_per == 1) 
+
+transit_cost %>%
+  filter(country == "China",
+         city == "Shanghai",
+         !is.na(start_year),
+         !is.na(end_year)) %>%
+  mutate(line = fct_reorder(line, year)) %>%
+  ggplot(aes(xmin = start_year, xmax = end_year, y = line, 
+             size = real_cost)) +
+  geom_errorbarh(height = 0.2) +
+  labs(x = "Year",
+       y = "",
+       title = "Transit projects in China",
+       size = "Cost") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman"))
+
+transit_cost %>%
+  filter(tunnel_per == 1,
+         end_year <= 2020,
+         country == "China") %>%
+  group_by(year = (year %/% 5) * 5) %>%  # groups things into 5 yr bins
+  summarize(median_cost_km = median(cost_km_millions),
+            n = n()) %>%
+  ggplot(aes(year, median_cost_km)) +
+  geom_line() +
+  geom_point(aes(size = n)) +
+  theme_fivethirtyeight() +
+  labs(x = "",
+       y = "Median cost / km",
+       title = "Medain cost / km of transit project in China by year",
+       size = "Number of projects") +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman"))
+
+transit_cost %>%
+  filter(tunnel_per == 1,
+         end_year <= 2020,
+         country == "China") %>%
+  mutate(year = (year %/% 5) * 5) %>%  # groups things into 5 yr bins
+  ggplot(aes(year, cost_km_millions, group = year)) +
+  geom_boxplot() +
+  theme_fivethirtyeight() +
+  labs(x = "",
+       y = "Cost / km (Real USD, Millions)",
+       title = "Cost distribution / km in China") +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman")) +
+  expand_limits(y = 0)
+
+transit_cost %>%
+  filter(country == "China") %>%
+  distinct(year, ppp_rate)
   
-  
-        
 ```
 
