@@ -10,7 +10,7 @@ runtime: shiny
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-```{r}
+```{r, echo=FALSE}
 library(tidyverse)
 library(tidytuesdayR)
 library(ggthemes)
@@ -36,25 +36,27 @@ transit_cost <- tuesdata$transit_cost %>%
     country = countrycode(country_code, "iso2c",
                           "country.name"),
     tunnel_per = tunnel / length) %>%
-  mutate(rr = ifelse(rr, "Railroad", "Not railroad"))
+  mutate(rr = ifelse(rr, "Railroad", "Not railroad"),
+         station_density = stations / length) %>%
+  mutate(country = fct_infreq(country))
 ```
 
 
 Most expensive lines, in terms of cost / km.
-
 ```{r eruptions, echo=FALSE}
-metrics <- c("Cost / KM (Millions USD" = "cost_km_millions",
-             "Length (KM)" = "length")
+metrics <- c("Cost / KM (Millions USD)" = "cost_km_millions",
+             "Length (KM)" = "length",
+             "Stations / KM" = "station_density")
 
 inputPanel(
   selectizeInput("country", label = "Country",
-              choices = unique(transit_cost$country), selected = "United States"),
+              choices = levels(transit_cost$country), selected = "United States"),
   
   selectInput("metric", label = "Metric:", choices = metrics,
               selected = metrics[1]),
   
   sliderInput("num_lines", label = "# of lines to show",
-              min = 1, max = 30, value = 1, step = 1)
+              min = 1, max = 30, value = 10, step = 1)
 )
 
 transit_cost_country <- reactive({
@@ -73,10 +75,13 @@ renderPlotly({
     ggplot(aes(!!sym(metric), line, fill = city)) +
     geom_col() +
     scale_y_reordered() +
-    scale_x_continuous(labels = dollar) +
     labs(x = x_axis_lab,
          y = "",
          fill = "City")
+  
+  if(metric %in% c("cost_km_millions")){
+    g <- g + scale_x_continuous(labels = dollar)
+  }
   
   ggplotly(g)
 })
