@@ -30,10 +30,9 @@ tuesdata <- tidytuesdayR::tt_load('2021-01-05')
 transit_cost <- tuesdata$transit_cost %>%
   mutate_at(vars(start_year, end_year, real_cost), as.numeric) %>%
   mutate(country_code = ifelse(country == "UK", "GB", country),
-    country = countrycode(country_code, "iso2c",
-                          "country.name"),
-    tunnel_per = tunnel / length) %>%
-  mutate(rr = ifelse(rr, "Railroad", "Not railroad"))
+    country = countrycode(country_code, "iso2c", "country.name"),
+    tunnel_per = tunnel / length,
+    rr = ifelse(rr, "Railroad", "Not railroad"))
 ```
 
 Exploring the data
@@ -174,7 +173,7 @@ transit_cost %>%
          end_year <= 2020,
          country == "China") %>%
   mutate(year = (year %/% 5) * 5, 
-        city = fct_lump(city, 5)) %>%  
+        city = fct_lump(city, 5, ties.method = "first")) %>%  
   ggplot(aes(year, cost_km_millions, group = year)) +
   geom_boxplot(outlier.size = -1) +
   geom_jitter(aes(color = city), height = 0, width = 1) +
@@ -208,10 +207,23 @@ transit_cost %>%
   filter(tunnel_per == 1,
          end_year <= 2020,
          country == "China") %>%
-  ggplot(aes(length, stations)) +
-  geom_point() +
-  expand_limits(x = 0, y = 0)
+  mutate(city = fct_lump(city, 4)) %>%
+  ggplot(aes(stations / length, cost_km_millions, size = length, color = city)) +
+  geom_point(alpha = 0.6) +
+  expand_limits(x = 0, y = 0) +
+  labs(x = "Stations / km",
+       y = "Cost / km",
+       color = "City",
+       size = "Length",
+       title = "Does cost per km increase with the number of stations per km?") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        text = element_text(family = "Times New Roman"))
 
-  
- ```
+```
+
+Let's make a shiny web app!!
+```{r}
+
+```
 
