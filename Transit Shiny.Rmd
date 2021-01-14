@@ -1,0 +1,88 @@
+---
+title: "Transit_cost"
+author: "Jeff Grayum"
+date: "1/13/2021"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(ggthemes)
+library(scales)
+library(skimr)
+#install.packages("countrycode")
+library(countrycode)
+library(glue)
+library(shiny)
+#install.packages("plotly")
+library(plotly)
+library(tidytext)
+```
+
+
+```{r, echo=FALSE}
+tuesdata <- tidytuesdayR::tt_load('2021-01-05')
+
+transit_cost <- tuesdata$transit_cost %>%
+  filter(!is.na(e)) %>%
+  mutate_at(vars(start_year, end_year, real_cost), as.numeric) %>%
+  mutate(country_code = ifelse(country == "UK", "GB", country),
+    country = countrycode(country_code, "iso2c",
+                          "country.name"),
+    tunnel_per = tunnel / length) %>%
+  mutate(rr = ifelse(rr, "Railroad", "Not railroad"))
+```
+
+
+Most expensive lines, in terms of cost / km.
+
+```{r eruptions, echo=FALSE}
+metrics <- c("Cost / KM (Millions USD" = "cost_km_millions",
+             "Length (KM)" = "length")
+
+inputPanel(
+  selectizeInput("country", label = "Country",
+              choices = unique(transit_cost$country), selected = "United States"),
+  
+  selectInput("metric", label = "Metric:", choices = metrics,
+              selected = metrics[1]),
+  
+  sliderInput("num_lines", label = "# of lines to show",
+              min = 1, max = 30, value = 1, step = 1)
+)
+
+transit_cost_country <- reactive({
+  transit_cost %>%
+    filter(country == input$country)
+})
+
+renderPlotly({
+  metric <- input$metric
+  x_axis_lab <- names(metrics[metrics == metric])
+  
+  g <- transit_cost_country() %>%
+    arrange(desc(!!sym(metric))) %>%
+    head(input$num_lines) %>%
+    mutate(line = reorder_within(line, !!sym(metric), city)) %>%
+    ggplot(aes(!!sym(metric), line, fill = city)) +
+    geom_col() +
+    scale_y_reordered() +
+    scale_x_continuous(labels = dollar) +
+    labs(x = x_axis_lab,
+         y = "",
+         fill = "City")
+  
+  ggplotly(g)
+})
+```
+
+
+
+
+

@@ -173,13 +173,16 @@ transit_cost %>%
   filter(tunnel_per == 1,
          end_year <= 2020,
          country == "China") %>%
-  mutate(year = (year %/% 5) * 5) %>%  # groups things into 5 yr bins
+  mutate(year = (year %/% 5) * 5, 
+        city = fct_lump(city, 5)) %>%  
   ggplot(aes(year, cost_km_millions, group = year)) +
-  geom_boxplot() +
+  geom_boxplot(outlier.size = -1) +
+  geom_jitter(aes(color = city), height = 0, width = 1) +
   theme_fivethirtyeight() +
   labs(x = "",
        y = "Cost / km (Real USD, Millions)",
-       title = "Cost distribution / km in China") +
+       title = "Cost distribution / km in China",
+       color = "City") +
   theme(axis.title = element_text(),
         text = element_text(family = "Times New Roman")) +
   expand_limits(y = 0)
@@ -187,6 +190,28 @@ transit_cost %>%
 transit_cost %>%
   filter(country == "China") %>%
   distinct(year, ppp_rate)
+
+transit_cost %>%
+  ggplot(aes(cost_km_millions, real_cost / length)) +
+  geom_point()
+
+
+transit_cost %>%
+  filter(tunnel_per == 1,
+         end_year <= 2020,
+         country == "China") %>%
+  ggplot(aes(stations)) +
+  geom_histogram(bidwidth = 5)
+
+
+transit_cost %>%
+  filter(tunnel_per == 1,
+         end_year <= 2020,
+         country == "China") %>%
+  ggplot(aes(length, stations)) +
+  geom_point() +
+  expand_limits(x = 0, y = 0)
+
   
-```
+ ```
 
